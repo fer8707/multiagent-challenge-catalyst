@@ -1,0 +1,16 @@
+# # Archivos de credenciales y configuración local
+# Ignora el archivo que contiene las claves de API y rutas
+.env
+
+# # Entorno Virtual
+# Ignora la carpeta completa del entorno virtual de Python
+.venv/
+
+# # Archivos de caché de Python
+# Ignora la carpeta de caché que Python genera
+__pycache__/
+*.pyc
+
+# # Carpetas de configuración del editor de código (opcional)
+.vscode/
+.idea/
