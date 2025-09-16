@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
+# NEW: Import for token usage and cost tracking
 from langchain_community.callbacks import OpenAICallbackHandler
 
 # --- 0. INITIAL CONFIGURATION ---
@@ -11,7 +12,7 @@ INPUT_DIRECTORY = os.getenv("INPUT_PATH")
 OUTPUT_DIRECTORY = os.getenv("OUTPUT_PATH")
 
 llm = AzureChatOpenAI(
-    azure_deployment="gpt-4o-mini", # Make sure this is your correct deployment name
+    azure_deployment="gpt-4o-mini",
 )
 
 def find_files_with_keywords(directory_path: str, keywords: list[str]) -> list[str]:
@@ -62,6 +63,7 @@ def save_output_to_file(content: str, filename: str):
     if not OUTPUT_DIRECTORY:
         print("Error: OUTPUT_DIRECTORY not configured in .env file.")
         return
+    
     file_path = os.path.join(OUTPUT_DIRECTORY, filename)
     try:
         with open(file_path, 'w', encoding='utf-8') as f:
@@ -82,8 +84,7 @@ def setup_output_directory(directory_path: str):
 # This block will only run when you execute the script directly
 if __name__ == "__main__":
     BUSINESS_LOGIC_KEYWORDS = [
-        "class", "entity", "database", "relationship", "model",
-        "domain", "service", "repository", "controller"
+        "class", "entity", "relationship"
     ]
 
     if setup_output_directory(OUTPUT_DIRECTORY):
@@ -109,7 +110,7 @@ if __name__ == "__main__":
                 )
                 analysis_chain = analysis_prompt | llm
                 print("\n🤖 Sending content to the AI for general analysis...")
-                # Pass the callback handler in the config dictionary
+                # Add config for tracking
                 analysis_result = analysis_chain.invoke(
                     {"content": documentation_content},
                     config={"callbacks": [cb]}
@@ -134,7 +135,7 @@ if __name__ == "__main__":
                 )
                 entities_chain = entities_prompt | llm
                 print("\n🤖 Asking AI to generate entities.md content...")
-                # Pass the callback handler again to include this call in the total count
+                # Add config for tracking
                 entities_result = entities_chain.invoke(
                     {"content": documentation_content},
                     config={"callbacks": [cb]}
@@ -142,8 +143,49 @@ if __name__ == "__main__":
                 
                 save_output_to_file(entities_result.content, "entities.md")
                 
-                # The callback handler now contains the accumulated data from both calls
-                print("\n--- 📊 Token Usage and Cost ---")
+                # --- ESLABÓN 3: GENERACIÓN DE LA ESTRUCTURA DEL PROYECTO ---
+                structure_prompt = ChatPromptTemplate.from_template(
+                    "You are a senior software architect designing a template for new projects. "
+                    "Your task is to generate a generic and well-organized project structure for a standard Java Spring Boot application. "
+                    "This structure should follow industry best practices for maintainability and scalability. "
+                    "Instead of using specific entity names (like 'Article'), use generic placeholder names like '<EntityName>' "
+                    "for the example files (e.g., '<EntityName>Controller.java', '<EntityName>Repository.java'). "
+                    "Also, include a brief, one-line description for the purpose of each main package (controller, model, repository, service). "
+                    "Format the output exactly like the example provided.\n\n"
+                    "## Required Project Structure\n"
+                    "Organize project to enhance maintainability and scalability.\n\n"
+                    "```\n"
+                    "sandbox/project/\n"
+                    "├── src/\n"
+                    "│   └── main/\n"
+                    "│       ├── java/\n"
+                    "│       │   └── com/\n"
+                    "│       │       └── example/\n"
+                    "│       │           └── project/\n"
+                    "│       │               ├── controller/  // Handles incoming HTTP requests and routes them.\n"
+                    "│       │               │   └── <EntityName>Controller.java\n"
+                    "│       │               ├── model/       // Contains the domain objects or entities.\n"
+                    "│       │               │   └── <EntityName>.java\n"
+                    "│       │               ├── repository/  // Handles data persistence and database operations.\n"
+                    "│       │               │   └── <EntityName>Repository.java\n"
+                    "│       │               ├── service/     // Contains the core business logic.\n"
+                    "│       │               │   └── <EntityName>Service.java\n"
+                    "│       │               └── Application.java\n"
+                    "│       └── resources/\n"
+                    "│           └── application.properties\n"
+                    "└── pom.xml\n"
+                    "```"
+                )
+                structure_chain = structure_prompt | llm
+                print("\n🤖 Asking AI to generate generic project_structure.md content...")
+                structure_result = structure_chain.invoke(
+                    {},
+                    config={"callbacks": [cb]}
+                )
+                save_output_to_file(structure_result.content, "project_structure.md")
+
+                # NEW: Print final cost and token usage from all three calls
+                print("\n--- 📊 Token Usage and Cost (Total) ---")
                 print(f"Input Tokens: {cb.prompt_tokens}")
                 print(f"Output Tokens: {cb.completion_tokens}")
                 print(f"Total Tokens: {cb.total_tokens}")
