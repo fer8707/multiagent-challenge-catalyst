@@ -10,6 +10,6 @@ uv venv
 ## Activate virtual enviroment
 .venv\Scripts\activate
 ## Install dependencies
-uv pip install langchain langchain-openai python-dotenv langchain-community
+uv pip install langchain langchain-openai python-dotenv langchain-community fastapi uvicorn sse-starlette
 ## Start
-python main.py
+python server.py
